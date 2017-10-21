@@ -21,6 +21,8 @@
 
 #include <signal.h>
 
+#include "zlib-1.2.11/zlib.h"
+
 #define bufferSize 1024
 
 char *myname = "unknown";
@@ -159,6 +161,7 @@ static void *serverReceiver(void *th_data) {
 	char *line;
 	int arr_sz;
 	int len;
+	char gzipString[100];
 	
 
    	http_data_t *data = malloc(sizeof(http_data_t));
@@ -170,7 +173,7 @@ static void *serverReceiver(void *th_data) {
 		// Parse all data from http request and store in data
 		strncpy(req, buffer, bufferSize);
 
-		printf("%s\n", buffer);
+		//printf("%s\n", buffer);
 
 		// Bad Request
 		if(parseHttp(&req, data) != 0) {
@@ -197,10 +200,10 @@ static void *serverReceiver(void *th_data) {
 		}
 
 		// Deal with type of http request in data
-		printf("Method: %s\n", data->method);
-    	printf("URI: %s\n", data->uri);
-    	printf("Version: %s\n", data->version);
-    	printf("Compress: %d\n", data->compression);
+		// printf("Method: %s\n", data->method);
+  //   	printf("URI: %s\n", data->uri);
+  //   	printf("Version: %s\n", data->version);
+  //   	printf("Compress: %d\n", data->compression);
 		//fp = fopen(td->filepath, "r");
 
     	//data->method[sizeof(data->method)] = '\0';
@@ -244,7 +247,7 @@ static void *serverReceiver(void *th_data) {
    			data->uri++;
    			if(isDirectory(data->uri) == 1 || strlen(data->uri) == 0) {
    				listDir = 1;
-   				printf("URI: %s\n", data->uri);
+   				//printf("URI: %s\n", data->uri);
    			}
    			data->uri--;
 
@@ -303,14 +306,14 @@ static void *serverReceiver(void *th_data) {
 				if (data->uri[0] == '/') data->uri++;
 
 				// Compression
-				//if(data->compression) {
-					// char gzipString[100];
-					// char gzipFile[100];
-					// sprintf(gzipString, "gzip < %s > %s.gz", data->uri, data->uri);
-					// system(gzipString);
-					// sprintf(gzipFile, "%s.gz", data->uri);
-					// data->uri = gzipFile;
-				//}
+				// if(data->compression) {
+				// 	char gzipString[100];
+				// 	char gzipFile[100];
+				// 	//sprintf(gzipString, "gzip < %s > %s.gz", data->uri, data->uri);
+				// 	//system(gzipString);
+				// 	//sprintf(gzipFile, "%s.gz", data->uri);
+				// 	//data->uri = gzipFile;
+				// }
 
 				fp = fopen(data->uri, "r");
 				if(fp == NULL) {
@@ -335,9 +338,9 @@ static void *serverReceiver(void *th_data) {
 
 					write(s, "HTTP/1.1 200 OK\r\n", 17);
 	    			write(s, contentLength, strlen(contentLength));
-	    			if(data->compression) {
-						write(s, "Content-Encoding: gzip\r\n", strlen("Content-Encoding: gzip\r\n"));
-					}
+	    // 			if(data->compression) {
+					// 	write(s, "Content-Encoding: gzip\r\n", strlen("Content-Encoding: gzip\r\n"));
+					// }
 	    			write(s, "Content-Type: text/html\r\n\r\n", 27);
 
 	    			strings = malloc(sizeof(char*));
@@ -351,7 +354,13 @@ static void *serverReceiver(void *th_data) {
 					}
 
 					for(int i=0; i< arr_sz; ++i) {
+						//uLong ucompSize = strlen(strings[i])+1; // "Hello, world!" + NULL delimiter.
+						//uLong compSize = compressBound(ucompSize);
+
+						//compress((Bytef *)gzipString, &compSize, (Bytef *)strings[i], ucompSize);
+
 						write(s, strings[i], strlen(strings[i]));
+						//printf("%s", gzipString);
 						free(strings[i]);
 					}
 					free(strings);

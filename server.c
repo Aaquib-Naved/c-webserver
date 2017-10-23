@@ -160,8 +160,6 @@ static void *serverReceiver(void *th_data) {
 	char **strings;
 	char *line;
 	int arr_sz;
-	int len;
-	char gzipString[100];
 	
 
    	http_data_t *data = malloc(sizeof(http_data_t));
@@ -219,11 +217,6 @@ static void *serverReceiver(void *th_data) {
 
 		if(strcmp(data->method, "GET") == 0) {
 			// cycle through path
-			const char delim[2] = "/";
-			const char delim2[2] = ".";
-   			char *token;
-   			char *stored;
-   			int index = 0;
    			int listDir = 0;
 
    			// token = strtok(data->uri, delim);
@@ -249,19 +242,23 @@ static void *serverReceiver(void *th_data) {
    				listDir = 1;
    				//printf("URI: %s\n", data->uri);
    			}
-   			data->uri--;
+   			if(strlen(data->uri) != 0) {
+   				data->uri--;
+   			}
+   			
 
 			// code for GET
 			char contentLength[100];
 			char content[100];
 			if(listDir) {
-				DIR           *d;
-				struct dirent *dir;		
+				DIR           *d = NULL;
+				struct dirent *dir = NULL;		
 
 				char dirPath[100];
 				sprintf(dirPath, ".%s", data->uri);
 
 				d = opendir(dirPath);
+				
 				numCharacters = 0;
 				if (d) {
 					while ((dir = readdir(d)) != NULL) {
@@ -278,17 +275,20 @@ static void *serverReceiver(void *th_data) {
 				    }
 				    closedir(d);
 				}
+				
+				sprintf(dirPath, ".%s", data->uri);
 
 				sprintf(contentLength, "Content-Length: %d\r\n", numCharacters);
 				write(s, "HTTP/1.1 200 OK\r\n", 17);
 	    		write(s, contentLength, strlen(contentLength));
 	    		write(s, "Content-Type: text/html\r\n\r\n", 27);
-
 				d = opendir(dirPath);
+				
 				char content[100];
 				if (d) {
 					while ((dir = readdir(d)) != NULL) {
 						if(dir->d_name[0] != '.' && dir->d_name[strlen(dir->d_name)-1] != '~') {
+							
 							if(strlen(data->uri) == 1 && data->uri[0] == '/') {
 								sprintf(content, "<a href='http://localhost:%d%s%s'>%s</a><br/>", td->port, data->uri, dir->d_name, dir->d_name);
 							}
@@ -347,7 +347,6 @@ static void *serverReceiver(void *th_data) {
 
 					arr_sz = 0;
 					while((line = readLine(&fp)) && line != NULL) {
-						len = strlen(line);
 
 						strings = (char**) realloc(strings, (arr_sz+1)*sizeof(char*));
 						strings[arr_sz++] = line;
@@ -364,8 +363,9 @@ static void *serverReceiver(void *th_data) {
 						free(strings[i]);
 					}
 					free(strings);
+					
+					fclose(fp);
 				}
-				fclose(fp);
 			}
 		}
 		else if(strcmp(data->method, "HEAD") == 0) {

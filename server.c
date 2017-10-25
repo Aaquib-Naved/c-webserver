@@ -83,13 +83,13 @@ char *readLine(FILE **fp) {
     return string;
 }
 
-static int validateMethod(http_data_t *data) {
-	if(strcmp(data->method, "GET") == 0 || strcmp(data->method, "POST") == 0 || strcmp(data->method, "HEAD") == 0 || strcmp(data->method, "OPTIONS") == 0) {
-		return 1;
-	}
+// static int validateMethod(http_data_t *data) {
+// 	if(strcmp(data->method, "GET") == 0 || strcmp(data->method, "POST") == 0 || strcmp(data->method, "HEAD") == 0 || strcmp(data->method, "OPTIONS") == 0) {
+// 		return 1;
+// 	}
 
-	return 0;
-}
+// 	return 0;
+// }
 
 static int parseHttp(char **req, http_data_t *data) {
 	const char delim[2] = "\n";
@@ -160,9 +160,17 @@ static void *serverReceiver(void *th_data) {
 	char **strings;
 	char *line;
 	int arr_sz;
+
+	char contentLength[bufferSize];
+	char content[bufferSize];
 	
 
    	http_data_t *data = malloc(sizeof(http_data_t));
+
+   	if(!data) {
+   		perror("malloc");
+   		exit(1);
+   	}
 
 	const int s = td->clientSocket;
 	while((bytes = read(s, buffer, bufferSize-1)) > 2) {
@@ -197,24 +205,6 @@ static void *serverReceiver(void *th_data) {
 			break;
 		}
 
-		// Deal with type of http request in data
-		// printf("Method: %s\n", data->method);
-  //   	printf("URI: %s\n", data->uri);
-  //   	printf("Version: %s\n", data->version);
-  //   	printf("Compress: %d\n", data->compression);
-		//fp = fopen(td->filepath, "r");
-
-    	//data->method[sizeof(data->method)] = '\0';
-		if(validateMethod(data) != 1) {
-			// unknown method
-			write(s, "HTTP/1.1 501 Not Implemented\r\n", strlen("HTTP/1.1 501 Not Implemented\r\n"));
-			write(s, "Content-Length: 20\r\n", strlen("Content-Length: 20\r\n"));
-			write(s, "Connection: Close\r\n", strlen("Connection: Close\r\n"));
-			write(s, "Content-Type: text/html\r\n\r\n", strlen("Content-Type: text/html\r\n\r\n"));
-			write(s, "501 Not Implemented\n", strlen("501 Not Implemented\n"));
-			break;
-		} 
-
 		if(strcmp(data->method, "GET") == 0) {
 			// cycle through path
    			int listDir = 0;
@@ -242,20 +232,22 @@ static void *serverReceiver(void *th_data) {
    				listDir = 1;
    				//printf("URI: %s\n", data->uri);
    			}
-   			if(strlen(data->uri) != 0) {
-   				data->uri--;
-   			}
+   			// if(strlen(data->uri) != 0) {
+   				
+   			// }
+   			data->uri--;
    			
 
 			// code for GET
-			char contentLength[100];
-			char content[100];
 			if(listDir) {
 				DIR           *d = NULL;
 				struct dirent *dir = NULL;		
 
 				char dirPath[100];
-				sprintf(dirPath, ".%s", data->uri);
+				if(sprintf(dirPath, ".%s", data->uri) == -1) {
+					perror("sprintf");
+					exit(1);
+				}
 
 				d = opendir(dirPath);
 				
@@ -264,10 +256,16 @@ static void *serverReceiver(void *th_data) {
 					while ((dir = readdir(d)) != NULL) {
 						if(dir->d_name[0] != '.' && dir->d_name[strlen(dir->d_name)-1] != '~') {
 							if(strlen(data->uri) == 1 && data->uri[0] == '/') {
-								sprintf(content, "<a href='http://localhost:%d%s%s'>%s</a><br/>", td->port, data->uri, dir->d_name, dir->d_name);
+								if(sprintf(content, "<a href='http://localhost:%d%s%s'>%s</a><br/>", td->port, data->uri, dir->d_name, dir->d_name) == -1) {
+									perror("sprintf");
+									exit(1);
+								}
 							}
 							else {
-								sprintf(content, "<a href='http://localhost:%d%s/%s'>%s</a><br/>", td->port, data->uri, dir->d_name, dir->d_name);
+								if(sprintf(content, "<a href='http://localhost:%d%s/%s'>%s</a><br/>", td->port, data->uri, dir->d_name, dir->d_name) == -1) {
+									perror("sprintf");
+									exit(1);
+								}
 							}
 							//sprintf(content, "<a href='https://www.google.com'>%s</a>\n", dir->d_name);
 							numCharacters += strlen(content);
@@ -275,31 +273,48 @@ static void *serverReceiver(void *th_data) {
 				    }
 				    closedir(d);
 				}
+				else {
+					perror("open dir");
+				}
 				
-				sprintf(dirPath, ".%s", data->uri);
+				if(sprintf(dirPath, ".%s", data->uri) == -1) {
+					perror("sprintf");
+					exit(1);
+				}
+				if(sprintf(contentLength, "Content-Length: %d\r\n", numCharacters) == -1) {
+					perror("sprintf");
+					exit(1);
+				}
 
-				sprintf(contentLength, "Content-Length: %d\r\n", numCharacters);
 				write(s, "HTTP/1.1 200 OK\r\n", 17);
 	    		write(s, contentLength, strlen(contentLength));
 	    		write(s, "Content-Type: text/html\r\n\r\n", 27);
 				d = opendir(dirPath);
 				
-				char content[100];
 				if (d) {
 					while ((dir = readdir(d)) != NULL) {
 						if(dir->d_name[0] != '.' && dir->d_name[strlen(dir->d_name)-1] != '~') {
 							
 							if(strlen(data->uri) == 1 && data->uri[0] == '/') {
-								sprintf(content, "<a href='http://localhost:%d%s%s'>%s</a><br/>", td->port, data->uri, dir->d_name, dir->d_name);
+								if(sprintf(content, "<a href='http://localhost:%d%s%s'>%s</a><br/>", td->port, data->uri, dir->d_name, dir->d_name) == -1) {
+									perror("sprintf");
+									exit(1);
+								}
 							}
 							else {
-								sprintf(content, "<a href='http://localhost:%d%s/%s'>%s</a><br/>", td->port, data->uri, dir->d_name, dir->d_name);
+								if(sprintf(content, "<a href='http://localhost:%d%s/%s'>%s</a><br/>", td->port, data->uri, dir->d_name, dir->d_name) == -1) {
+									perror("sprintf");
+									exit(1);
+								}
 							}
 							//sprintf(content, "<a href='https://www.google.com'>%s</a>\n", dir->d_name);
 							write(s, content, strlen(content));
 						}
 				    }
 				    closedir(d);
+				}
+				else {
+					perror("open dir");
 				}
 			}
 			else {
@@ -333,7 +348,11 @@ static void *serverReceiver(void *th_data) {
 					    nextChar = getc(fp);
 					}
 
-					sprintf(contentLength, "Content-Length: %d\r\n", numCharacters);
+					if(sprintf(contentLength, "Content-Length: %d\r\n", numCharacters) == -1) {
+						perror("sprintf");
+						exit(1);
+					}
+
 					rewind(fp);
 
 					write(s, "HTTP/1.1 200 OK\r\n", 17);
@@ -370,12 +389,50 @@ static void *serverReceiver(void *th_data) {
 		}
 		else if(strcmp(data->method, "HEAD") == 0) {
 			// code for HEAD
-		}
-		else if(strcmp(data->method, "POST") == 0) {
-			// code for POST
+			if (data->uri[0] == '/') data->uri++;
+
+				fp = fopen(data->uri, "r");
+				if(fp == NULL) {
+					write(s, "HTTP/1.1 404 Not Found\r\n", strlen("HTTP/1.1 404 Not Found\r\n"));
+					write(s, "Content-Length: 14\r\n", strlen("Content-Length: 14\r\n"));
+					write(s, "Connection: Close\r\n", strlen("Connection: Close\r\n"));
+					write(s, "Content-Type: text/html\r\n\r\n", strlen("Content-Type: text/html\r\n\r\n"));
+					write(s, "404 Not Found\n", strlen("404 Not Found\n"));
+				}
+				else {
+					nextChar = getc(fp);
+					numCharacters = 0;
+
+					while (nextChar != EOF) {
+					    //Do something else, like collect statistics
+					    numCharacters++;
+					    nextChar = getc(fp);
+					}
+
+					if(sprintf(contentLength, "Content-Length: %d\r\n", numCharacters) == -1) {
+						perror("sprintf");
+						exit(1);
+					}
+
+					rewind(fp);
+
+					write(s, "HTTP/1.1 200 OK\r\n", 17);
+	    			write(s, contentLength, strlen(contentLength));
+	    // 			if(data->compression) {
+					// 	write(s, "Content-Encoding: gzip\r\n", strlen("Content-Encoding: gzip\r\n"));
+					// }
+	    			write(s, "Content-Type: text/html\r\n\r\n", 27);
+	    			fclose(fp);
+	    		}
 		}
 		else {
 			// code for not implemented
+			write(s, "HTTP/1.1 501 Not Implemented\r\n", strlen("HTTP/1.1 501 Not Implemented\r\n"));
+			write(s, "Content-Length: 20\r\n", strlen("Content-Length: 20\r\n"));
+			write(s, "Connection: Close\r\n", strlen("Connection: Close\r\n"));
+			write(s, "Content-Type: text/html\r\n\r\n", strlen("Content-Type: text/html\r\n\r\n"));
+			write(s, "501 Not Implemented\n", strlen("501 Not Implemented\n"));
+			break;
 		}
 	}
 

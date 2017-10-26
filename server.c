@@ -21,8 +21,6 @@
 
 #include <signal.h>
 
-#include "zlib-1.2.11/zlib.h"
-
 #define bufferSize 1024
 
 char *myname = "unknown";
@@ -46,6 +44,8 @@ void signal_callback_handler(int signum) {
     //printf("Caught signal %d\n",signum);
     // Cleanup and close up stuff here
     // Terminate program
+    
+    
     exit(0);
 }
 
@@ -256,13 +256,13 @@ static void *serverReceiver(void *th_data) {
 					while ((dir = readdir(d)) != NULL) {
 						if(dir->d_name[0] != '.' && dir->d_name[strlen(dir->d_name)-1] != '~') {
 							if(strlen(data->uri) == 1 && data->uri[0] == '/') {
-								if(sprintf(content, "<a href='http://localhost:%d%s%s'>%s</a><br/>", td->port, data->uri, dir->d_name, dir->d_name) == -1) {
+								if(sprintf(content, "<a href='%s%s'>%s</a><br/>", data->uri, dir->d_name, dir->d_name) == -1) {
 									perror("sprintf");
 									exit(1);
 								}
 							}
 							else {
-								if(sprintf(content, "<a href='http://localhost:%d%s/%s'>%s</a><br/>", td->port, data->uri, dir->d_name, dir->d_name) == -1) {
+								if(sprintf(content, "<a href='%s/%s'>%s</a><br/>", data->uri, dir->d_name, dir->d_name) == -1) {
 									perror("sprintf");
 									exit(1);
 								}
@@ -296,13 +296,13 @@ static void *serverReceiver(void *th_data) {
 						if(dir->d_name[0] != '.' && dir->d_name[strlen(dir->d_name)-1] != '~') {
 							
 							if(strlen(data->uri) == 1 && data->uri[0] == '/') {
-								if(sprintf(content, "<a href='http://localhost:%d%s%s'>%s</a><br/>", td->port, data->uri, dir->d_name, dir->d_name) == -1) {
+								if(sprintf(content, "<a href='%s%s'>%s</a><br/>", data->uri, dir->d_name, dir->d_name) == -1) {
 									perror("sprintf");
 									exit(1);
 								}
 							}
 							else {
-								if(sprintf(content, "<a href='http://localhost:%d%s/%s'>%s</a><br/>", td->port, data->uri, dir->d_name, dir->d_name) == -1) {
+								if(sprintf(content, "<a href='%s/%s'>%s</a><br/>", data->uri, dir->d_name, dir->d_name) == -1) {
 									perror("sprintf");
 									exit(1);
 								}
@@ -514,6 +514,10 @@ int startServer(const int port) {
 			perror("Pthread Error");
 			exit(1);
 		}
+		int error = pthread_detach(thread);
+		if(error != 0) {
+			perror("pthread detach");
+		}
 	}
 }
 
@@ -522,8 +526,9 @@ int main (int argc, char **argv) {
   	char *endp;
 
   	// Register signal and signal handler
-    signal(SIGINT, signal_callback_handler);
-    signal(SIGTERM, signal_callback_handler);
+    	signal(SIGINT, signal_callback_handler);
+    	signal(SIGTERM, signal_callback_handler);
+    	signal(SIGPIPE, SIG_IGN);
 
   	/* we are passed our name, and the name is non-null.  Just give up if this isn't true */
   
